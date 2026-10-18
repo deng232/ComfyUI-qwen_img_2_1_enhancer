@@ -1,8 +1,6 @@
 # ComfyUI-qwen_img_2_1_enhancer
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://buymeacoffee.com/capitan01r)
-
-Reference-image strength, masked reference control, and prompt phrase weighting for **Qwen Image 2.1** in ComfyUI.
+Reference-image strength, masked reference control, prompt phrase weighting, and attention diagnostics for **Qwen Image 2.1** in ComfyUI.
 
 Adjust the influence of whole reference images or mask-selected regions, and emphasize selected parts of a prompt. Reference controls and phrase weighting can be used independently or together.
 
@@ -24,6 +22,16 @@ Requires ComfyUI with native **Qwen Image 2.1** support and a working model, tex
 | **Qwen Image 2.1 Reference Strength** | `MODEL` | Controls attention priority for a selected reference image. |
 | **Qwen Image 2.1 Reference Strength Masked** | `MODEL` | Applies reference strength to mask-selected tokens, with optional exclusion of unselected tokens. |
 | **Qwen Image 2.1 Edit — Phrase Weights** | `positive`, `negative`, `latent`, `phrase_report` | Adds `(phrase:weight)` syntax to positive and negative prompts. |
+| **Qwen21 Reference Attention Probe** | `patched_model`, `probe_handle` | Captures one head's target-to-reference attention during sampling. |
+| **Qwen21 Reference Attention Preview** | `overlay`, `raw_heatmap`, `ref_attention_mass`, `metadata` | Renders captured attention and reports its numeric mass. |
+
+## Attention Probe
+
+The integrated Attention Probe observes native Qwen Image 2.1 reference-token attention without changing Q/K/V or the sampler output. It supports comma-separated capture times, uniform query sampling, and full-query chunked measurement while preserving native prefix caching.
+
+Connect `MODEL -> Qwen21 Reference Attention Probe -> modifier (optional) -> sampler`, then connect the returned `probe_handle`, the sampler's latent output, and the same reference image to **Qwen21 Reference Attention Preview**.
+
+See [the complete Attention Probe guide](qwen_image21_attention_probe/README.md) for input meanings, output interpretation, ordering with enhancer nodes, limitations, and errors.
 
 ## Reference Strength
 
