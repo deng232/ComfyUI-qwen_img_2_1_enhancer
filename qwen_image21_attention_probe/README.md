@@ -19,6 +19,8 @@ Install the parent `ComfyUI-qwen_img_2_1_enhancer` directory under `ComfyUI/cust
 
 `capture_t` accepts one or more comma-separated normalized timesteps, for example `0,0.25,0.5,0.75,1`. Each requested value uses the closest timestep actually visited by the sampler. Overlay and grayscale outputs are IMAGE batches in the same order; per-capture `actual_t` and attention mass values are recorded in metadata. The standalone FLOAT mass output remains the first requested capture for workflow compatibility.
 
+Three sanitized example graphs are included in the parent package's `workflows/` directory. Select locally installed model files, a reference image, and prompts after opening one.
+
 ## Outputs
 
 - `overlay`: a blue-to-yellow-to-red relative visualization over the supplied reference image.

@@ -29,7 +29,7 @@ Requires ComfyUI with native **Qwen Image 2.1** support and a working model, tex
 
 The integrated Attention Probe observes native Qwen Image 2.1 reference-token attention without changing Q/K/V or the sampler output. It supports comma-separated capture times, uniform query sampling, and full-query chunked measurement while preserving native prefix caching.
 
-Connect `MODEL -> Qwen21 Reference Attention Probe -> modifier (optional) -> sampler`, then connect the returned `probe_handle`, the sampler's latent output, and the same reference image to **Qwen21 Reference Attention Preview**.
+Connect `MODEL -> Qwen21 Reference Attention Probe -> modifier (optional) -> sampler`, then connect the returned `probe_handle`, the sampler's latent output, and the same reference image to **Qwen21 Reference Attention Preview**. Three sanitized example graphs are included in `workflows/`; select your own model files, image, and prompts after opening one.
 
 See [the complete Attention Probe guide](qwen_image21_attention_probe/README.md) for input meanings, output interpretation, ordering with enhancer nodes, limitations, and errors.
 
