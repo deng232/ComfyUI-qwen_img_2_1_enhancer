@@ -20,16 +20,23 @@ Requires ComfyUI with native **Qwen Image 2.1** support and a working model, tex
 | Node | Outputs | Purpose |
 |---|---|---|
 | **Qwen Image 2.1 Reference Strength** | `MODEL` | Controls attention priority for a selected reference image. |
-| **Qwen Image 2.1 Reference Strength Masked** | `MODEL` | Applies reference strength to mask-selected tokens, with optional exclusion of unselected tokens. |
+| **Qwen Image 2.1 Reference Strength Masked** | `MODEL` | Applies reference strength continuously from mask opacity, with optional exclusion of zero-opacity tokens. |
 | **Qwen Image 2.1 Edit — Phrase Weights** | `positive`, `negative`, `latent`, `phrase_report` | Adds `(phrase:weight)` syntax to positive and negative prompts. |
 | **Qwen21 Reference Attention Probe** | `patched_model`, `probe_handle` | Captures one head's target-to-reference attention during sampling. |
-| **Qwen21 Reference Attention Preview** | `overlay`, `raw_heatmap`, `ref_attention_mass`, `metadata` | Renders captured attention and reports its numeric mass. |
+| **Qwen21 Reference Attention Probing** | `attention_data`, `ref_attention_mass`, `metadata` | Resolves captured sampling results without display scaling. |
+| **Qwen21 Reference Attention Preview** | `overlay` | Renders the overlay and shows raw attention values on hover. |
+| **Qwen21 Reference Mask Preview** | `MASK` | Passes a mask through and shows its opacity on hover. |
 
 ## Attention Probe
 
 The integrated Attention Probe observes native Qwen Image 2.1 reference-token attention without changing Q/K/V or the sampler output. It supports comma-separated capture times, uniform query sampling, and full-query chunked measurement while preserving native prefix caching.
 
-Connect `MODEL -> Qwen21 Reference Attention Probe -> modifier (optional) -> sampler`, then connect the returned `probe_handle`, the sampler's latent output, and the same reference image to **Qwen21 Reference Attention Preview**. Three sanitized example graphs are included in `workflows/`; select your own model files, image, and prompts after opening one.
+Connect `MODEL -> Qwen21 Reference Attention Probe -> modifier (optional) -> sampler`. Send `probe_handle` and the sampler latent to **Qwen21 Reference Attention Probing**, then send its `attention_data` and the same reference image to **Qwen21 Reference Attention Preview**. Sanitized example graphs are included in `workflows/`; select your own model files, images, and prompts after opening one:
+
+- `Qwen Image 2.1 Attention Probe.json`
+- `Qwen Image 2.1 Attention Probe + Reference Strength.json`
+- `Qwen Image 2.1 Attention Probe + Masked Reference Strength.json`
+- `Qwen Image 2.1 Attention Probe + 3 Masked Reference Strength.json` — three independent reference images, masks, strength controls, and attention outputs, plus custom output width and height.
 
 See [the complete Attention Probe guide](qwen_image21_attention_probe/README.md) for input meanings, output interpretation, ordering with enhancer nodes, limitations, and errors.
 
@@ -64,9 +71,11 @@ Chain nodes to adjust multiple references. Repeating an index replaces its earli
 
 Use **Qwen Image 2.1 Reference Strength Masked** in the MODEL path after your model and LoRA loaders. Connect a mask painted on the reference image you want to control. Keep the reference images and VAE connected to the native Qwen Image 2.1 encoder or the included Phrase Weights encoder.
 
+For uniform fractional values, right-click the reference **LoadImage** node and choose **Open Precise Mask Editor**. Its hard brush writes the selected value directly instead of accumulating opacity, so repeated strokes at `0.5` remain uniform. **Save as New Masked Copy** preserves the source file, switches the LoadImage node to a new PNG with the same RGB pixels, and exposes the painted alpha through the node's existing MASK output. Values are stored at 8-bit precision; `0.5` becomes `128/255`.
+
 1. Set `reference_index` to the reference's position: `1` for the first connected image, `2` for the second, and so on. Empty encoder inputs are skipped.
-2. Connect that reference's mask. White marks the source region to select; gray values contribute partial coverage.
-3. Match `mask_resize_method` to the image's resize path, then choose the selection threshold and strength.
+2. Connect that reference's mask. Each token's average mask opacity continuously controls its strength.
+3. Match `mask_resize_method` to the image's resize path, then choose the maximum strength.
 4. Send the node's MODEL output to the sampler.
 
 | Input | Default | Description |
@@ -74,17 +83,16 @@ Use **Qwen Image 2.1 Reference Strength Masked** in the MODEL path after your mo
 | `model` | — | Native Qwen Image 2.1 MODEL. |
 | `mask` | — | Mask in the selected reference's coordinate system. The first batch item is used. |
 | `reference_index` | `1` | Reference to control, using the encoder's connected-image order. |
-| `strength` | `4.0` | Attention-odds multiplier for selected tokens: `1` is native, above `1` increases priority, below `1` reduces it, and `0` blocks their direct attention from generated-image queries. |
-| `mask_resize_method` | `nearest-exact` | Mask interpolation before token selection. Use `nearest-exact` for an external nearest-exact image resize, or `lanczos` when the native encoder resizes the original image. |
-| `mask_threshold` | `1.0` | Minimum average mask coverage per token. `1` requires full coverage; lower values include more boundary tokens. `0` selects every token, including fully black regions. |
-| `mask_behavior` | `focus_only` | Choose whether unselected reference tokens remain available or are excluded from diffusion attention. |
+| `strength` | `4.0` | Maximum attention multiplier at opacity `1`. A token uses `1 + opacity × (strength - 1)`. |
+| `mask_resize_method` | `nearest-exact` | Mask interpolation before 16 × 16 token averaging. Use `nearest-exact` for an external nearest-exact image resize, or `lanczos` when the native encoder resizes the original image. |
+| `mask_behavior` | `focus_only` | Choose whether exactly zero-opacity reference tokens remain available or are excluded from diffusion attention. |
 
 **Mask behaviors**
 
-- `focus_only`: applies strength only to selected tokens. Unselected tokens retain native weighting.
-- `zero_unmasked_tokens`: also blocks unselected reference keys in every diffusion attention block, including reference-prefix processing.
+- `focus_only`: opacity `0` retains native weighting; positive opacity continuously interpolates toward `strength`.
+- `zero_unmasked_tokens`: exactly zero-opacity reference keys are blocked in every diffusion attention block, including reference-prefix processing; positive opacity uses the same continuous interpolation.
 
-The mask is resized to the selected reference's actual encoded pixel dimensions, then averaged over each **16 × 16 pixel** token footprint. Different source and encoded resolutions are supported. Cropping, padding, rotation, or a sequence of image resizes must be matched in the mask path; the node cannot infer those transformations.
+The mask is resized to the selected reference's actual encoded pixel dimensions, then averaged over each **16 × 16 pixel** token footprint. There is no threshold: for example, opacity `0.5` and strength `4` produce a `2.5×` multiplier. Different source and encoded resolutions are supported. Cropping, padding, rotation, or a sequence of image resizes must be matched in the mask path; the node cannot infer those transformations.
 
 Chain masked nodes to control multiple references with separate masks and settings. Repeating an index replaces the earlier masked-node rule for that reference. `strength = 1` with `focus_only` removes that masked-node adjustment.
 

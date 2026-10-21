@@ -16,7 +16,9 @@ class AttentionProbeRegistrationTest(unittest.TestCase):
         }
 
         self.assertIn("Qwen21ReferenceAttentionProbe", registered)
+        self.assertIn("Qwen21ReferenceAttentionProbing", registered)
         self.assertIn("Qwen21ReferenceAttentionPreview", registered)
+        self.assertIn("Qwen21ReferenceMaskPreview", registered)
 
 
 if __name__ == "__main__":
